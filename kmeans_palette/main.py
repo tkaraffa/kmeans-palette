@@ -1,8 +1,31 @@
+"""
+todo
+
+order clusters/modes by size (do this once for both)
+
+display colors by prevalance - ie, scale outputs to match how big the cluster is
+
+add pyproject.toml kmeans-palette should run main
+
+more cli args
+
+docstrings, argparse usage, docs, etc
+
+output palette to terminal??? colors, codes, etc
+"""
+
 import os
+import argparse
 
 from PIL import Image
 import numpy as np
-from scipy.stats import mode
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", type=str)
+    parser.add_argument("-k", type=int, default=5)
+
+    return parser.parse_args()
 
 
 def get_kmeans(x: np.ndarray, k: int):
@@ -20,7 +43,7 @@ def get_kmeans(x: np.ndarray, k: int):
         # calculate labels,
         # check that all clusters are used,
         # and calculate centroids
-        labels = get_distance_labels(x, centroids, k)
+        labels = calculate_distance_labels(x, centroids, k)
         centroids = calculate_centroids(x, labels, k)
     return labels, centroids
 
@@ -54,14 +77,8 @@ def calculate_centroids(
     ).T
     return centroids
 
-def calculate_modes(x, labels, k):
-    modes = np.array(
-        [mode(x[labels == i]) for i in range(k)]
-    )
-    return modes
 
-
-def get_distance_labels(
+def calculate_distance_labels(
         x: np.ndarray, centroids: np.ndarray, k: int
 ) -> np.ndarray:
     """
@@ -92,22 +109,44 @@ def get_distance_labels(
     return labels
 
 
+def calculate_modes(x, labels, k):
+    return np.array([
+        calculate_mode(x.T[labels == i]) for i in range(k)
+    ])
+
+
+def calculate_mode(cluster):
+    """
+    cluster: np.ndarray
+        Matrix with column-based observations
+    """
+    vals, counts = np.unique(cluster, axis=0, return_counts=True)
+    cluster_mode = vals[counts == np.max(counts)][0]
+    return cluster_mode
+
+
 def main():
-    k = 2
-    file = os.path.join(os.path.dirname(__file__), "the-wounded-deer.jpg")
+
+    args = get_args()
+
+    k = args.k
+    file = args.file
+    # k = 5
+    # file = os.path.join(os.path.dirname(__file__), "the-wounded-deer.jpg")
     with Image.open(file) as f:
         pixels = np.asarray(f)
     original_dimensions = pixels.shape
     pixels = pixels.reshape((pixels.shape[0] * pixels.shape[1], pixels.shape[2])).T
 
     labels, centroids = get_kmeans(pixels, k)
-    centroids = centroids.T.reshape((k, 1, original_dimensions[2]))
+    centroids = centroids.T.reshape((1, k, original_dimensions[2]))
 
     with Image.fromarray(centroids.astype(np.uint8)) as f:
-        f.save("test.png")
-    modes = np.array([mode(pixels.T[labels==i], keepdims=False).mode for i in range(k)]).reshape(k, 1, original_dimensions[2])
+        f.save("centroid_palette.png")
+    modes = calculate_modes(pixels, labels, k)
+    modes = modes.reshape((1, k, original_dimensions[2]))
     with Image.fromarray(modes.astype(np.uint8)) as f:
-        f.save("test2.png")
+        f.save("mode_palette.png")
 
 
 if __name__ == "__main__":
