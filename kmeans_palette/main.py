@@ -124,6 +124,11 @@ def calculate_mode(cluster):
     cluster_mode = vals[counts == np.max(counts)][0]
     return cluster_mode
 
+def get_ordered_clusters(labels):
+    _, counts = np.unique(labels, return_counts=True)
+    idx_sorted = np.argsort(counts)
+    ordered_clusters = np.flip(idx_sorted)    
+    return ordered_clusters
 
 def main():
 
@@ -131,18 +136,41 @@ def main():
 
     k = args.k
     file = args.file
-    # k = 5
-    # file = os.path.join(os.path.dirname(__file__), "the-wounded-deer.jpg")
+
     with Image.open(file) as f:
         pixels = np.asarray(f)
     original_dimensions = pixels.shape
     pixels = pixels.reshape((pixels.shape[0] * pixels.shape[1], pixels.shape[2])).T
 
     labels, centroids = get_kmeans(pixels, k)
-    centroids = centroids.T.reshape((1, k, original_dimensions[2]))
+    ordered_clusters = get_ordered_clusters(labels)
 
+    # for i in ordered_clusters:
+    #     print(centroids[:, i], int(100*np.mean(labels==i)))
+    z=np.array([[None]])
+    for i in ordered_clusters:
+        p = np.repeat(
+            centroids[:, i].reshape(-1, 1), round(100*np.mean(labels==i), 0), axis=1
+        )
+        z = np.append(z, p, axis=0)
+        # print(p.shape)
+
+    print(z.shape)
+    print(z.reshape( 3, int(z.shape[0]/3)))
+
+    # proportional_centroids = np.array(
+    #     [
+    #         np.repeat(
+    #         centroids[:, i].reshape(-1, 1), int(100*np.mean(labels==i)), axis=1
+    #     ) for i in ordered_clusters
+    #     ]
+    # )
+    # print(proportional_centroids)
+
+    centroids = centroids.T.reshape((1, k, original_dimensions[2]))
     with Image.fromarray(centroids.astype(np.uint8)) as f:
         f.save("centroid_palette.png")
+
     modes = calculate_modes(pixels, labels, k)
     modes = modes.reshape((1, k, original_dimensions[2]))
     with Image.fromarray(modes.astype(np.uint8)) as f:
