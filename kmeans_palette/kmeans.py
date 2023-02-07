@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from pathlib import Path
 
@@ -10,11 +10,9 @@ import numpy as np
 class KMeans:
     file: str
     k: int
+    image_width: int = 100
     image_height: int = 30
-
-    def __post_init__(self):
-        self.output_directory = Path(self.file).with_suffix("")
-        self.output_directory.mkdir(exist_ok=True, parents=True)
+    hex_str: str = field(default="#%02x%02x%02x", init=False)
 
     def fit(self):
         with Image.open(self.file) as f:
@@ -29,11 +27,19 @@ class KMeans:
         self.proportional_centroids = self.get_proportional_matrix(self.centroids)
         self.proportional_modes = self.get_proportional_matrix(self.modes)
 
-    def output(self):
+    def transform(self):
+        print(f"{'Centroids':-^21}")
+        self.print_colors(self.centroids)
+        print(f"{'Modes':-^21}")
+        self.print_colors(self.modes)
         self.write_proportional_image(
             self.proportional_centroids, "centroids_palette.png"
         )
         self.write_proportional_image(self.proportional_modes, "modes_palette.png")
+
+    def print_colors(self, colors: np.ndarray):
+        for triplet in colors.T[self.ordered_clusters]:
+            print(triplet, self.hex_str.upper() % tuple(triplet))
 
     def get_kmeans(self):
         centroids = self.pixels[
@@ -54,7 +60,7 @@ class KMeans:
             # and calculate centroids
             labels = self.calculate_distance_labels(centroids)
             centroids = self.calculate_centroids(labels)
-        return labels, centroids
+        return labels, centroids.astype(np.uint8)
 
     def calculate_centroids(self, labels: np.ndarray) -> np.ndarray:
         """
@@ -130,7 +136,7 @@ class KMeans:
             [
                 np.repeat(
                     matrix[:, i].reshape(1, -1),
-                    int(round(100 * np.mean(self.labels == i))),
+                    int(round(self.image_width * np.mean(self.labels == i))),
                     axis=0,
                 )
                 for i in self.ordered_clusters
@@ -138,8 +144,11 @@ class KMeans:
         )
 
     def write_proportional_image(self, proportional_array, filename):
+        output_directory = Path(self.file).with_suffix("")
+        output_directory.mkdir(exist_ok=True, parents=True)
+        outfile = os.path.join(output_directory, filename)
+
         arr = proportional_array.reshape((1, *proportional_array.shape))
-        outfile = os.path.join(self.output_directory, filename)
         with Image.fromarray(
             np.repeat(arr, self.image_height, axis=0).astype(np.uint8)
         ) as f:
