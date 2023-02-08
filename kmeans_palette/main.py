@@ -1,9 +1,11 @@
 """
 todo
 
+tests
+
 add pyproject.toml kmeans-palette should run main
 
-more cli args
+XX more cli args
 
 docstrings, argparse usage, docs, etc
 
