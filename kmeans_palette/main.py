@@ -1,4 +1,9 @@
 """
+Create color palettes based on images,
+using a k-means clustering algorithm.
+"""
+
+"""
 todo
 
 tests
@@ -23,14 +28,56 @@ from enums import KMeansDefaults
 
 
 def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("file", type=str)
-    parser.add_argument("-k", type=int, default=KMeansDefaults.K.value)
+    parser = argparse.ArgumentParser(prog="kmeans_palette.py", description=__doc__)
     parser.add_argument(
-        "--image_width", type=int, default=KMeansDefaults.IMAGE_WIDTH.value
+        "file", type=str, help="The image file for which to compute a color palette."
     )
     parser.add_argument(
-        "--image_height", type=int, default=KMeansDefaults.IMAGE_HEIGHT.value
+        "-k",
+        "--clusters",
+        metavar="K",
+        type=int,
+        default=KMeansDefaults.K.value,
+        action="store",
+        help="The number of clusters to use in the k-means algorithm.",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        metavar="FILE",
+        type=str,
+        default=os.getcwd(),
+        help="The directory in which to output images and color codes.",
+    )
+    parser.add_argument(
+        "-iw",
+        "--image_width",
+        metavar="N",
+        type=int,
+        default=KMeansDefaults.IMAGE_WIDTH.value,
+        help="The width in pixels of the output image(s).",
+    )
+    parser.add_argument(
+        "-ih",
+        "--image_height",
+        metavar="N",
+        type=int,
+        default=KMeansDefaults.IMAGE_HEIGHT.value,
+        help="The height in pixels of the output image(s)",
+    )
+
+    only_group = parser.add_mutually_exclusive_group()
+    only_group.add_argument(
+        "-m",
+        "--modes_only",
+        action="store_true",
+        help="Whether or not to only output the modes of clusters.",
+    )
+    only_group.add_argument(
+        "-c",
+        "--centroids_only",
+        action="store_true",
+        help="Whether or not to only output the centroids of clusters.",
     )
 
     return parser.parse_args()
@@ -39,12 +86,23 @@ def get_args():
 def main():
     args = get_args()
 
-    k = args.k
+    k = args.clusters
     file = args.file
     image_width = args.image_width
     image_height = args.image_height
+    output_directory = args.output
+    modes_only = args.modes_only
+    centroids_only = args.centroids_only
 
-    kmeans = KMeans(file, k, image_width=image_width, image_height=image_height)
+    kmeans = KMeans(
+        file=file,
+        k=k,
+        image_width=image_width,
+        image_height=image_height,
+        output_directory=output_directory,
+        modes_only=modes_only,
+        centroids_only=centroids_only,
+    )
     kmeans.fit()
     kmeans.transform()
 
