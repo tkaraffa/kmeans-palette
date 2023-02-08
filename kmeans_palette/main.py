@@ -19,14 +19,19 @@ from PIL import Image
 import numpy as np
 
 from kmeans import KMeans
+from enums import KMeansDefaults
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("file", type=str)
-    parser.add_argument("-k", type=int, default=5)
-    parser.add_argument("--image_width", type=int, default=100)
-    parser.add_argument("--image_height", type=int, default=30)
+    parser.add_argument("-k", type=int, default=KMeansDefaults.K.value)
+    parser.add_argument(
+        "--image_width", type=int, default=KMeansDefaults.IMAGE_WIDTH.value
+    )
+    parser.add_argument(
+        "--image_height", type=int, default=KMeansDefaults.IMAGE_HEIGHT.value
+    )
 
     return parser.parse_args()
 

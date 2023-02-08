@@ -5,13 +5,15 @@ from pathlib import Path
 from PIL import Image
 import numpy as np
 
+from enums import KMeansDefaults
+
 
 @dataclass
 class KMeans:
     file: str
-    k: int
-    image_width: int = 100
-    image_height: int = 30
+    k: int = field(default=KMeansDefaults.K.value)
+    image_width: int = field(default=KMeansDefaults.IMAGE_WIDTH.value)
+    image_height: int = field(default=KMeansDefaults.IMAGE_HEIGHT.value)
     hex_str: str = field(default="#%02x%02x%02x", init=False)
 
     def fit(self):
@@ -28,6 +30,8 @@ class KMeans:
         self.proportional_modes = self.get_proportional_matrix(self.modes)
 
     def transform(self):
+        self.output_directory = Path(self.file).with_suffix("")
+        self.output_directory.mkdir(exist_ok=True, parents=True)
         print(f"{'Centroids':-^21}")
         self.print_colors(self.centroids)
         print(f"{'Modes':-^21}")
@@ -144,9 +148,7 @@ class KMeans:
         )
 
     def write_proportional_image(self, proportional_array, filename):
-        output_directory = Path(self.file).with_suffix("")
-        output_directory.mkdir(exist_ok=True, parents=True)
-        outfile = os.path.join(output_directory, filename)
+        outfile = os.path.join(self.output_directory, filename)
 
         arr = proportional_array.reshape((1, *proportional_array.shape))
         with Image.fromarray(
