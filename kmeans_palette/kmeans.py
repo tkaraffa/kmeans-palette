@@ -16,10 +16,11 @@ class KMeans:
     image_height: int = field(default=KMeansDefaults.IMAGE_HEIGHT.value)
     output_directory: str = field(default=os.getcwd())
 
-    centroids_only: bool = field(default=False)
-    modes_only: bool = field(default=False)
-
-    def fit(self):
+    def fit(self, centroids_only=False, modes_only=False):
+        if centroids_only and modes_only:
+            raise AttributeError(
+                "Choose, at most, one of `centroids_only` and `modes_only`."
+            )
         with Image.open(self.file) as f:
             pixels = np.asarray(f)
         self.pixels = pixels.reshape(
@@ -27,22 +28,22 @@ class KMeans:
         ).T
 
         self.labels, self.centroids = self.get_kmeans()
-        self.modes = self.calculate_modes()
         self.ordered_clusters = self.get_ordered_clusters()
 
         if not self.centroids_only:
+            self.modes = self.calculate_modes()
             self.proportional_modes = self.get_proportional_matrix(self.modes)
         if not self.modes_only:
-            self.proportional_centroids = self.get_proportional_matrix(self.centroids)
+            self.proportional_centroids = self.get_proportional_matrix(
+                self.centroids
+            )
 
     def transform(self):
         output_directory = os.path.join(
             self.output_directory, Path(self.file).with_suffix("").stem
         )
         Path(output_directory).mkdir(exist_ok=True, parents=True)
-
         self.write_proportional_images(output_directory)
-
         self.write_markdown(
             os.path.join(output_directory, Path(self.file).with_suffix(".md"))
         )
@@ -87,7 +88,10 @@ class KMeans:
 
         """
         centroids = np.array(
-            [np.mean(self.pixels.T[labels == i], axis=0) for i in range(self.k)]
+            [
+                np.mean(self.pixels.T[labels == i], axis=0)
+                for i in range(self.k)
+            ]
         ).T
         return centroids
 
@@ -178,9 +182,8 @@ class KMeans:
 
     def write_proportional_image(self, proportional_array, outfile):
         arr = proportional_array.reshape((1, *proportional_array.shape))
-        with Image.fromarray(
-            np.repeat(arr, self.image_height, axis=0).astype(np.uint8)
-        ) as f:
+        shaped_arr = np.repeat(arr, self.image_height, axis=0).astype(np.uint8)
+        with Image.fromarray(shaped_arr) as f:
             f.save(outfile)
 
     def write_markdown(self, outfile):
@@ -207,9 +210,7 @@ class KMeans:
 
     def write_markdown_section(self, title, image, alt, colors):
         output = ""
-        img_template = (
-            '<img src="{image}" alt="{alt}" height="{height}" width="{width}">\n\n'
-        )
+        img_template = '<img src="{image}" alt="{alt}" height="{height}" width="{width}">\n\n'
         output += f"## {title}\n\n"
         output += img_template.format(
             image=image,

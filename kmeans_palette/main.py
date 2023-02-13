@@ -10,8 +10,6 @@ tests
 
 add pyproject.toml kmeans-palette should run main
 
-XX more cli args
-
 docstrings, argparse usage, docs, etc
 
 output palette to terminal??? colors, codes, etc
@@ -86,24 +84,17 @@ def get_args():
 def main():
     args = get_args()
 
-    k = args.clusters
-    file = args.file
-    image_width = args.image_width
-    image_height = args.image_height
-    output_directory = args.output
-    modes_only = args.modes_only
-    centroids_only = args.centroids_only
-
     kmeans = KMeans(
-        file=file,
-        k=k,
-        image_width=image_width,
-        image_height=image_height,
-        output_directory=output_directory,
-        modes_only=modes_only,
-        centroids_only=centroids_only,
+        file=args.file,
+        k=args.clusters,
+        image_width=args.image_width,
+        image_height=args.image_height,
+        output_directory=args.output_directory,
     )
-    kmeans.fit()
+    kmeans.fit(
+        centroids_only=args.centroids_only,
+        modes_only=args.modes_only,
+    )
     kmeans.transform()
 
 
