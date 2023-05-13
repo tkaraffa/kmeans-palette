@@ -26,9 +26,13 @@ from enums import KMeansDefaults
 
 
 def get_args():
-    parser = argparse.ArgumentParser(prog="kmeans_palette.py", description=__doc__)
+    parser = argparse.ArgumentParser(
+        prog="kmeans_palette.py", description=__doc__
+    )
     parser.add_argument(
-        "file", type=str, help="The image file for which to compute a color palette."
+        "file",
+        type=str,
+        help="The image file for which to compute a color palette.",
     )
     parser.add_argument(
         "-k",
@@ -41,14 +45,13 @@ def get_args():
     )
     parser.add_argument(
         "-o",
-        "--output",
-        metavar="FILE",
+        "--output_directory",
+        metavar="DIR",
         type=str,
         default=os.getcwd(),
         help="The directory in which to output images and color codes.",
     )
     parser.add_argument(
-        "-iw",
         "--image_width",
         metavar="N",
         type=int,
@@ -56,7 +59,6 @@ def get_args():
         help="The width in pixels of the output image(s).",
     )
     parser.add_argument(
-        "-ih",
         "--image_height",
         metavar="N",
         type=int,
@@ -69,13 +71,13 @@ def get_args():
         "-m",
         "--modes_only",
         action="store_true",
-        help="Whether or not to only output the modes of clusters.",
+        help="Flag to only output the modes of clusters.",
     )
     only_group.add_argument(
         "-c",
         "--centroids_only",
         action="store_true",
-        help="Whether or not to only output the centroids of clusters.",
+        help="Flag to only output the centroids of clusters.",
     )
 
     return parser.parse_args()
@@ -83,18 +85,16 @@ def get_args():
 
 def main():
     args = get_args()
-
     kmeans = KMeans(
         file=args.file,
         k=args.clusters,
         image_width=args.image_width,
         image_height=args.image_height,
         output_directory=args.output_directory,
-    )
-    kmeans.fit(
         centroids_only=args.centroids_only,
         modes_only=args.modes_only,
     )
+    kmeans.fit()
     kmeans.transform()
 
 
