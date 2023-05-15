@@ -18,13 +18,8 @@ class KMeans:
     centroids_only: bool = field(default=False)
     modes_only: bool = field(default=False)
 
-    img_template: str = field(
-        default='<img src="{image}" alt="{alt}" height="{height}" width="{width}">\n\n'  # noqa
-    )
-
-    def __post_init__(self):
-        self.output_directory = self.create_output_directory()
-        self.attributes = [
+    attributes: list[dict] = field(
+        default_factory=lambda: [
             {
                 "attribute": "centroids",
                 "proportional_attribute": "proportional_centroids",
@@ -39,7 +34,14 @@ class KMeans:
                 "image": "modes_palette.png",
                 "alt": "Proportional Modes",
             },
-        ]
+        ],
+        init=False,
+    )
+
+    img_template: str = field(
+        default='<img src="{image}" alt="{alt}" height="{height}" width="{width}">\n\n',  # noqa
+        init=False,
+    )
 
     def fit(self):
         """
@@ -66,23 +68,24 @@ class KMeans:
         """
         Output color palette(s) based on k-means clustering
         """
-        self.write_proportional_images(self.output_directory)
+        self.write_proportional_images()
         self.write_markdown(
             os.path.join(
-                self.output_directory,
+                self.full_output_directory,
                 Path(os.path.basename(self.file)).with_suffix(".md"),
             )
         )
 
-    def create_output_directory(self) -> str:
+    @property
+    def full_output_directory(self) -> str:
         """
         Creates directory for outputting color palette files
         """
-        output_directory = os.path.join(
+        full_output_directory = os.path.join(
             self.output_directory, Path(self.file).with_suffix("").stem
         )
-        Path(output_directory).mkdir(exist_ok=True, parents=True)
-        return output_directory
+        Path(full_output_directory).mkdir(exist_ok=True, parents=True)
+        return full_output_directory
 
     def read_image_as_pixels(self):
         """
@@ -239,7 +242,7 @@ class KMeans:
         )
         return proportional_matrix
 
-    def write_proportional_images(self, output_directory):
+    def write_proportional_images(self):
         """
         Writes proportional matrices of colors to images for
         relevant attributes
@@ -247,7 +250,7 @@ class KMeans:
         for attribute in self.attributes:
             try:
                 outfile = os.path.join(
-                    self.output_directory, attribute["image"]
+                    self.full_output_directory, attribute["image"]
                 )
                 self.write_proportional_image(
                     getattr(self, attribute["proportional_attribute"]),

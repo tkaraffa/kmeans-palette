@@ -11,7 +11,9 @@ from kmeans import KMeans
 class TestKMeans(object):
     def test_init(self):
         kmeans = KMeans(file="test.png")
-        assert kmeans.output_directory == os.path.join(os.getcwd(), "test")
+        assert kmeans.full_output_directory == os.path.join(
+            os.getcwd(), "test"
+        )
         assert all(
             set(attribute.keys())
             == {"attribute", "proportional_attribute", "title", "image", "alt"}
