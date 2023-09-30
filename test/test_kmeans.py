@@ -22,8 +22,9 @@ class TestKMeans(object):
 
     def test_fit(self):
         with pytest.raises(AttributeError):
-            KMeans(
+            kmeans = KMeans(
                 file="test.png",
                 centroids_only=True,
                 modes_only=True,
-            ).fit()
+            )
+            kmeans.fit_kmeans()

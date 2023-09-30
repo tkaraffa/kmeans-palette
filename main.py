@@ -22,7 +22,6 @@ from PIL import Image
 import numpy as np
 
 from kmeans import KMeans
-from enums import KMeansDefaults
 
 
 def get_args():
@@ -39,7 +38,7 @@ def get_args():
         "--clusters",
         metavar="K",
         type=int,
-        default=KMeansDefaults.K.value,
+        default=5,
         action="store",
         help="The number of clusters to use in the k-means algorithm.",
     )
@@ -55,14 +54,14 @@ def get_args():
         "--image_width",
         metavar="N",
         type=int,
-        default=KMeansDefaults.IMAGE_WIDTH.value,
+        default=260,
         help="The width in pixels of the output image(s).",
     )
     parser.add_argument(
         "--image_height",
         metavar="N",
         type=int,
-        default=KMeansDefaults.IMAGE_HEIGHT.value,
+        default=52,
         help="The height in pixels of the output image(s)",
     )
 
@@ -94,8 +93,7 @@ def main():
         centroids_only=args.centroids_only,
         modes_only=args.modes_only,
     )
-    kmeans.fit()
-    kmeans.transform()
+    kmeans.fit_kmeans()
 
 
 if __name__ == "__main__":

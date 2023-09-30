@@ -1,79 +1,60 @@
+from typing import Optional
 from dataclasses import dataclass, field
+from collections import namedtuple
 import os
 from pathlib import Path
 
 from PIL import Image
 import numpy as np
 
-from enums import KMeansDefaults
+# namedtuple for holding central tendency configurations
+Central = namedtuple(
+    "Central",
+    ["attribute", "proportional_attribute", "title", "image", "alt"],
+)
 
 
 @dataclass
 class KMeans:
     file: str
-    k: int = field(default=KMeansDefaults.K.value)
-    image_width: int = field(default=KMeansDefaults.IMAGE_WIDTH.value)
-    image_height: int = field(default=KMeansDefaults.IMAGE_HEIGHT.value)
+    k: int
+    image_width: int
+    image_height: int
     output_directory: str = field(default=os.getcwd())
     centroids_only: bool = field(default=False)
     modes_only: bool = field(default=False)
 
-    attributes: list[dict] = field(
-        default_factory=lambda: [
-            {
-                "attribute": "centroids",
-                "proportional_attribute": "proportional_centroids",
-                "title": "Centroids",
-                "image": "centroids_palette.png",
-                "alt": "Proportional Centroids",
-            },
-            {
-                "attribute": "modes",
-                "proportional_attribute": "proportional_modes",
-                "title": "Modes",
-                "image": "modes_palette.png",
-                "alt": "Proportional Modes",
-            },
-        ],
-        init=False,
-    )
+    @property
+    def centroid_attributes(self) -> Optional[Central]:
+        if not self.modes_only:
+            return Central(
+                "centroids",
+                "proportional_centroids",
+                "Centroids",
+                "centroids_palette.png",
+                "Proportional Centroids",
+            )
 
-    img_template: str = field(
-        default='<img src="{image}" alt="{alt}" height="{height}" width="{width}">\n\n',  # noqa
-        init=False,
-    )
+    @property
+    def mode_attributes(self) -> Optional[Central]:
+        if not self.centroids_only:
+            return Central(
+                "modes",
+                "proportional_modes",
+                "Modes",
+                "modes_palette.png",
+                "Proportional Modes",
+            )
 
-    def fit(self):
-        """
-        Calculate k-means clusters, and optionally sets proportional
-        arrays for centroids and modes
-        """
+    @property
+    def attributes(self) -> list[Central]:
         if self.centroids_only and self.modes_only:
             raise AttributeError(
                 "Choose, at most, one of `centroids_only` and `modes_only`."
             )
-        self.read_image_as_pixels()
-        self.compute_kmeans()
-        self.get_ordered_clusters()
-
-        if not self.centroids_only:
-            self.calculate_modes()
-            self.proportional_modes = self.get_proportional_matrix(self.modes)
-        if not self.modes_only:
-            self.proportional_centroids = self.get_proportional_matrix(
-                self.centroids
-            )
-
-    def transform(self):
-        """
-        Output color palette(s) based on k-means clustering
-        """
-        self.write_proportional_images()
-        self.write_markdown(
-            os.path.join(
-                self.full_output_directory,
-                Path(os.path.basename(self.file)).with_suffix(".md"),
-            )
+        return filter(
+            None,
+            [self.centroid_attributes, self.mode_attributes],
         )
 
     @property
@@ -87,6 +68,32 @@ class KMeans:
         Path(full_output_directory).mkdir(exist_ok=True, parents=True)
         return full_output_directory
 
+    def fit_kmeans(self):
+        """
+        Calculate k-means clusters, and optionally sets proportional
+        arrays for centroids and modes
+        """
+        self.pixels = self.read_image_as_pixels()
+        self.labels, self.centroids = self.compute_kmeans()
+        self.ordered_clusters = self.get_ordered_clusters()
+
+        if not self.centroids_only:
+            self.modes = self.calculate_modes()
+            self.proportional_modes = self.get_proportional_matrix(self.modes)
+        if not self.modes_only:
+            self.proportional_centroids = self.get_proportional_matrix(
+                self.centroids
+            )
+
+        for attribute in self.attributes:
+            self.write_proportional_images(attribute)
+        self.write_markdown(
+            os.path.join(
+                self.full_output_directory,
+                Path(os.path.basename(self.file)).with_suffix(".md"),
+            )
+        )
+
     def read_image_as_pixels(self):
         """
         Reshapes 3D array of color codes/image width/image height
@@ -94,10 +101,9 @@ class KMeans:
         """
         with Image.open(self.file) as f:
             pixels = np.asarray(f)
-        self.pixels = pixels.reshape(
+        return pixels.reshape(
             (pixels.shape[0] * pixels.shape[1], pixels.shape[2])
         ).T
-        return self
 
     def compute_kmeans(self):
         """
@@ -121,9 +127,7 @@ class KMeans:
             # and calculate centroids
             labels = self.calculate_distance_labels(centroids)
             centroids = self.calculate_centroids(labels)
-        self.labels = labels
-        self.centroids = centroids.astype(np.uint8)
-        return self
+        return labels, centroids.astype(np.uint8)
 
     def calculate_centroids(self, labels: np.ndarray) -> np.ndarray:
         """
@@ -184,7 +188,7 @@ class KMeans:
         cluster_mode = vals[counts == np.max(counts)][0]
         return cluster_mode
 
-    def calculate_modes(self):
+    def calculate_modes(self) -> np.ndarray:
         """
         Calculate modes of clusters
         """
@@ -194,8 +198,7 @@ class KMeans:
                 for i in range(self.k)
             ]
         ).T
-        self.modes = modes
-        return self
+        return modes
 
     def get_ordered_clusters(self):
         """
@@ -204,8 +207,7 @@ class KMeans:
         _, counts = np.unique(self.labels, return_counts=True)
         idx_sorted = np.argsort(counts)
         ordered_clusters = np.flip(idx_sorted)
-        self.ordered_clusters = ordered_clusters
-        return self
+        return ordered_clusters
 
     def get_color_codes(self, colors: np.ndarray):
         """
@@ -242,22 +244,19 @@ class KMeans:
         )
         return proportional_matrix
 
-    def write_proportional_images(self):
+    def write_proportional_images(self, attribute: Central):
         """
         Writes proportional matrices of colors to images for
         relevant attributes
         """
-        for attribute in self.attributes:
-            try:
-                outfile = os.path.join(
-                    self.full_output_directory, attribute["image"]
-                )
-                self.write_proportional_image(
-                    getattr(self, attribute["proportional_attribute"]),
-                    outfile,
-                )
-            except AttributeError:
-                pass
+        try:
+            outfile = os.path.join(self.full_output_directory, attribute.image)
+            self.write_proportional_image(
+                getattr(self, attribute.proportional_attribute),
+                outfile,
+            )
+        except AttributeError:
+            pass
 
     def write_proportional_image(self, proportional_array, outfile):
         """
@@ -276,16 +275,15 @@ class KMeans:
         """
         with open(outfile, "w") as f:
             for attribute in self.attributes:
-                if hasattr(self, attribute["proportional_attribute"]):
-                    f.write("\n")
-                    f.write(
-                        self.write_markdown_section(
-                            title=attribute["title"],
-                            image=attribute["image"],
-                            alt=attribute["alt"],
-                            colors=getattr(self, attribute["attribute"]),
-                        )
+                f.write("\n")
+                f.write(
+                    self.write_markdown_section(
+                        title=attribute.title,
+                        image=attribute.image,
+                        alt=attribute.alt,
+                        colors=getattr(self, attribute.attribute),
                     )
+                )
 
     def write_markdown_section(self, title, image, alt, colors):
         """
@@ -294,7 +292,9 @@ class KMeans:
         cluster, RGB, and hex codes
         """
         output = f"## {title}\n\n"
-        output += self.img_template.format(
+        img_template = '<img src="{image}" alt="{alt}" height="{height}" width="{width}">\n\n'  # noqa
+
+        output += img_template.format(
             image=image,
             alt=alt,
             height=self.image_height,
