@@ -105,7 +105,7 @@ class KMeans:
             (pixels.shape[0] * pixels.shape[1], pixels.shape[2])
         ).T
 
-    def compute_kmeans(self):
+    def compute_kmeans(sel):
         """
         Compute k-means clusters based on array of pixels
         """
